@@ -6,6 +6,7 @@ import requestIp from "request-ip";
 import authRoutes from "./routes/auth.routes.js";
 import mentorRoutes from "./routes/mentor.routes.js";
 import sessionRoutes from "./routes/session.routes.js";
+import internshipRoutes from "./routes/internship.routes.js";
 
 const app = express();
 
@@ -16,18 +17,24 @@ app.use(cookieParser());
 app.use(requestIp.mw());
 
 // ── CORS ─────────────────────────────────────────────
-app.use((_req, res, next) => {
-  res.header(
-    "Access-Control-Allow-Origin",
-    process.env["CLIENT_URL"] ?? "http://localhost:5173",
-  );
+const allowedOrigins = new Set([
+  process.env["CLIENT_URL"] ?? "http://localhost:8080",
+  "http://localhost:8080",
+  "http://localhost:5173",
+]);
+
+app.use((req, res, next) => {
+  const requestOrigin = req.headers.origin;
+  if (requestOrigin && allowedOrigins.has(requestOrigin)) {
+    res.header("Access-Control-Allow-Origin", requestOrigin);
+  }
   res.header(
     "Access-Control-Allow-Methods",
     "GET, POST, PUT, PATCH, DELETE, OPTIONS",
   );
   res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.header("Access-Control-Allow-Credentials", "true");
-  if (_req.method === "OPTIONS") {
+  if (req.method === "OPTIONS") {
     res.sendStatus(204);
     return;
   }
@@ -38,6 +45,7 @@ app.use((_req, res, next) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/mentor", mentorRoutes);
 app.use("/api/sessions", sessionRoutes);
+app.use("/api/internships", internshipRoutes);
 
 // ── Health Check ─────────────────────────────────────
 app.get("/health", (_req, res) => {

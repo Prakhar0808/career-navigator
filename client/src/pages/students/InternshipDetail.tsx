@@ -1,15 +1,102 @@
-import { useParams, Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useParams, Link, useLocation } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import SkillTag from "@/components/SkillTag";
 import MatchScoreBadge from "@/components/MatchScoreBadge";
 import InternshipCard from "@/components/InternshipCard";
 import { Button } from "@/components/ui/button";
-import { internships } from "@/data/mockData";
-import { MapPin, Clock, Users, Building2, ArrowLeft, CheckCircle } from "lucide-react";
+import { jobService, type InternshipJob } from "@/services/jobService";
+import { MapPin, Clock, Users, Building2, ArrowLeft, CheckCircle, Loader2 } from "lucide-react";
+
+type InternshipDetailRecord = InternshipJob & {
+  description?: string;
+  requirements?: string[];
+};
+
+interface InternshipLocationState {
+  internship?: InternshipDetailRecord;
+}
 
 const InternshipDetail = () => {
   const { id } = useParams();
-  const internship = internships.find(i => i.id === id);
+  const location = useLocation();
+  const state = location.state as InternshipLocationState | null;
+
+  const [internship, setInternship] = useState<InternshipDetailRecord | null>(
+    state?.internship ?? null,
+  );
+  const [similar, setSimilar] = useState<InternshipJob[]>([]);
+  const [isLoading, setIsLoading] = useState(!state?.internship);
+
+  useEffect(() => {
+    const loadDetail = async (): Promise<void> => {
+      if (!id) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Keep existing state data (faster UX), but refresh from API if needed.
+        if (!state?.internship) {
+          const detailResult = await jobService.getJobById(id);
+          setInternship(detailResult.data);
+        }
+
+        const listResult = await jobService.getJobs({ limit: 20 });
+        setSimilar(listResult.data.filter((item) => item.id !== id).slice(0, 3));
+      } catch (error) {
+        console.error("Failed to load internship details:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    void loadDetail();
+  }, [id, state?.internship]);
+
+  const description = useMemo(() => {
+    if (!internship) {
+      return "";
+    }
+
+    if (internship.description) {
+      return internship.description;
+    }
+
+    return `This is a live internship listing from ${internship.company}. Review the details and use the apply link to submit your application on the source platform.`;
+  }, [internship]);
+
+  const requirements = useMemo(() => {
+    if (!internship) {
+      return [];
+    }
+
+    if (internship.requirements && internship.requirements.length > 0) {
+      return internship.requirements;
+    }
+
+    const skillRequirements = internship.skills.map((skill) =>
+      `Working knowledge of ${skill}`,
+    );
+
+    return [
+      ...skillRequirements,
+      "Strong communication and collaboration skills",
+      "Willingness to learn and adapt quickly",
+    ].slice(0, 6);
+  }, [internship]);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Navbar />
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-20 text-center text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin mx-auto mb-3" />
+          <p>Loading internship details...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!internship) {
     return (
@@ -22,8 +109,6 @@ const InternshipDetail = () => {
       </div>
     );
   }
-
-  const similar = internships.filter(i => i.id !== id).slice(0, 3);
 
   return (
     <div className="min-h-screen bg-background">
@@ -56,18 +141,28 @@ const InternshipDetail = () => {
           </div>
 
           <h3 className="font-semibold text-foreground mb-2">Description</h3>
-          <p className="text-sm text-muted-foreground mb-6">{internship.description}</p>
+          <p className="text-sm text-muted-foreground mb-6">{description}</p>
 
           <h3 className="font-semibold text-foreground mb-2">Requirements</h3>
           <ul className="space-y-1.5 mb-6">
-            {internship.requirements.map((r, i) => (
+            {requirements.map((r, i) => (
               <li key={i} className="flex items-center gap-2 text-sm text-muted-foreground">
                 <CheckCircle className="h-4 w-4 text-accent flex-shrink-0" /> {r}
               </li>
             ))}
           </ul>
 
-          <Button size="lg" className="gradient-primary text-primary-foreground border-0">Apply Now</Button>
+          {internship.applyUrl ? (
+            <a href={internship.applyUrl} target="_blank" rel="noreferrer">
+              <Button size="lg" className="gradient-primary text-primary-foreground border-0">
+                Apply Now
+              </Button>
+            </a>
+          ) : (
+            <Button size="lg" className="gradient-primary text-primary-foreground border-0" disabled>
+              Apply Link Unavailable
+            </Button>
+          )}
         </div>
 
         {similar.length > 0 && (

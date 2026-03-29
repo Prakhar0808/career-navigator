@@ -2,6 +2,11 @@ import mongoose from "mongoose";
 import { ENV } from "./env.js";
 
 const connectDB = async (): Promise<void> => {
+  if (!ENV.MONGODB_URI) {
+    console.warn("⚠️  MONGODB_URI missing. Starting server without database.");
+    return;
+  }
+
   try {
     const conn = await mongoose.connect(ENV.MONGODB_URI, {
       dbName: "internportal",

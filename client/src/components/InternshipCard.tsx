@@ -16,17 +16,41 @@ interface InternshipCardProps {
   postedDate: string;
   applicants: number;
   matchScore?: number;
+  description?: string;
+  requirements?: string[];
+  applyUrl?: string;
   showApply?: boolean;
 }
 
 const InternshipCard = ({
   id, title, company, location, type, duration, stipend,
-  skills, postedDate, applicants, matchScore, showApply = true,
+  skills, postedDate, applicants, matchScore, description, requirements, applyUrl, showApply = true,
 }: InternshipCardProps) => (
   <div className="glass-card rounded-lg p-5 hover-lift group">
     <div className="flex items-start justify-between mb-3">
       <div>
-        <Link to={`/internships/${id}`} className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors">
+        <Link
+          to={`/internships/${id}`}
+          state={{
+            internship: {
+              id,
+              title,
+              company,
+              location,
+              type,
+              duration,
+              stipend,
+              skills,
+              postedDate,
+              applicants,
+              matchScore,
+              description,
+              requirements,
+              applyUrl,
+            },
+          }}
+          className="text-lg font-semibold text-foreground group-hover:text-primary transition-colors"
+        >
           {title}
         </Link>
         <div className="flex items-center gap-2 mt-1 text-muted-foreground text-sm">
@@ -55,7 +79,27 @@ const InternshipCard = ({
       <div className="flex items-center gap-2">
         <span className="text-xs text-muted-foreground">{postedDate}</span>
         {showApply && (
-          <Link to={`/internships/${id}`}>
+          <Link
+            to={`/internships/${id}`}
+            state={{
+              internship: {
+                id,
+                title,
+                company,
+                location,
+                type,
+                duration,
+                stipend,
+                skills,
+                postedDate,
+                applicants,
+                matchScore,
+                description,
+                requirements,
+                applyUrl,
+              },
+            }}
+          >
             <Button size="sm">View & Apply</Button>
           </Link>
         )}

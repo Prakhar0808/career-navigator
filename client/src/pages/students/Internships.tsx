@@ -1,25 +1,72 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Navbar from "@/components/Navbar";
 import InternshipCard from "@/components/InternshipCard";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { internships } from "@/data/mockData";
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Search, SlidersHorizontal, Loader2 } from "lucide-react";
+import { jobService, type InternshipJob } from "@/services/jobService";
+import { useToast } from "@/hooks/use-toast";
 
 const Internships = () => {
+  const { toast } = useToast();
   const [keyword, setKeyword] = useState("");
   const [sortBy, setSortBy] = useState("newest");
   const [locationFilter, setLocationFilter] = useState("all");
+  const [internships, setInternships] = useState<InternshipJob[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
-  const locations = ["all", ...new Set(internships.map(i => i.location))];
+  const fetchInternships = async (showLoading: boolean): Promise<void> => {
+    if (showLoading) {
+      setIsLoading(true);
+    } else {
+      setIsRefreshing(true);
+    }
 
-  let filtered = internships.filter(i =>
-    (keyword === "" || i.title.toLowerCase().includes(keyword.toLowerCase()) || i.skills.some(s => s.toLowerCase().includes(keyword.toLowerCase()))) &&
-    (locationFilter === "all" || i.location === locationFilter)
+    setErrorMessage(null);
+
+    try {
+      const result = await jobService.getJobs({ limit: 60 });
+      setInternships(result.data);
+
+      if (result.sourceWarnings.length > 0) {
+        toast({
+          title: "Web source warning",
+          description: result.sourceWarnings[0],
+        });
+      }
+    } catch (error) {
+      console.error("Failed to load internships:", error);
+      setErrorMessage("Could not load live internships. Please try again.");
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    void fetchInternships(true);
+  }, []);
+
+  const locations = useMemo(
+    () => ["all", ...new Set(internships.map((i) => i.location))],
+    [internships],
   );
 
-  if (sortBy === "match") filtered = [...filtered].sort((a, b) => b.matchScore - a.matchScore);
+  let filtered = internships.filter(
+    (i) =>
+      (keyword === "" ||
+        i.title.toLowerCase().includes(keyword.toLowerCase()) ||
+        i.company.toLowerCase().includes(keyword.toLowerCase()) ||
+        i.skills.some((s) => s.toLowerCase().includes(keyword.toLowerCase()))) &&
+      (locationFilter === "all" || i.location === locationFilter),
+  );
+
+  if (sortBy === "match") {
+    filtered = [...filtered].sort((a, b) => (b.matchScore ?? 0) - (a.matchScore ?? 0));
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -43,12 +90,33 @@ const Internships = () => {
               <SelectItem value="match">Highest Match</SelectItem>
             </SelectContent>
           </Select>
+          <Button
+            variant="outline"
+            onClick={() => void fetchInternships(false)}
+            disabled={isRefreshing}
+          >
+            {isRefreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : "Refresh"}
+          </Button>
         </div>
 
         <p className="text-sm text-muted-foreground mb-4">{filtered.length} internships found</p>
+
+        {isLoading && (
+          <div className="flex items-center gap-2 text-muted-foreground py-6">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            <span>Fetching internships from web sources...</span>
+          </div>
+        )}
+
+        {errorMessage && (
+          <div className="mb-4 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive">
+            {errorMessage}
+          </div>
+        )}
+
         <div className="grid gap-4">
-          {filtered.map(i => <InternshipCard key={i.id} {...i} />)}
-          {filtered.length === 0 && (
+          {!isLoading && filtered.map((i) => <InternshipCard key={i.id} {...i} />)}
+          {!isLoading && filtered.length === 0 && (
             <div className="text-center py-16 text-muted-foreground">
               <SlidersHorizontal className="h-10 w-10 mx-auto mb-3 opacity-50" />
               <p>No internships found. Try adjusting your filters.</p>
