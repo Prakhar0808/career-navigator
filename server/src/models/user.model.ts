@@ -13,6 +13,7 @@ export interface IUser {
 
   // Student-specific
   phone: string | null;
+  skills: string[];
 
   // Mentor-specific
   expertise: string[];
@@ -77,6 +78,10 @@ const userSchema = new Schema<IUser>(
       type: String,
       default: null,
       trim: true,
+    },
+    skills: {
+      type: [String],
+      default: [],
     },
 
     // ── Mentor Fields ──

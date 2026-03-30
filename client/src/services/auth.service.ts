@@ -11,6 +11,7 @@ export interface User {
   avatar: string | null;
   provider: "local" | "google" | "github";
   phone: string | null;
+  skills: string[];
   expertise: string[];
   bio: string | null;
   companyName: string | null;

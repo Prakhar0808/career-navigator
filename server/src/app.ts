@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth.routes.js";
 import mentorRoutes from "./routes/mentor.routes.js";
 import sessionRoutes from "./routes/session.routes.js";
 import internshipRoutes from "./routes/internship.routes.js";
+import matchRoutes from "./routes/match.routes.js";
 
 const app = express();
 
@@ -46,6 +47,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/mentor", mentorRoutes);
 app.use("/api/sessions", sessionRoutes);
 app.use("/api/internships", internshipRoutes);
+app.use("/api", matchRoutes);
 
 // ── Health Check ─────────────────────────────────────
 app.get("/health", (_req, res) => {
